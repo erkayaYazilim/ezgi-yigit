@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Ezgi &amp; Yiğit Düğün Fotoğraf Paylaşımı</title>
+  <!-- Google Fonts: Serif & Sans -->
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header-text">
+      <h1>Ezgi &amp; Yiğit</h1>
+      <p class="date">17-24 Mayıs 2025</p>
+      <p class="quote">“Bizden daha iyi fotoğrafçısınız!”</p>
+      <p class="subtitle">Düğünümüzde çektiğiniz tüm fotoğrafları paylaşın.</p>
+    </div>
+
+    <form id="uploadForm">
+    
+
+      <label for="fileInput" class="btn-file">
+        <i class="fas fa-camera"></i> Fotoğraf Yükle
+      </label>
+      <input type="file" id="fileInput" accept="image/*" multiple required hidden>
+
+      <div id="preview"></div>
+
+      <!-- Başlangıçta gizli Yükle butonu -->
+      <button type="submit" class="btn-submit" style="display: none;">Yükle</button>
+    </form>
+
+    <div id="progressContainer">
+      <p>Yükleniyor... <span id="progressText">0%</span></p>
+      <progress id="uploadProgress" value="0" max="100"></progress>
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+  <script>
+    // Firebase başlatma
+    const firebaseConfig = { /* ... uygulama config ... */ };
+    firebase.initializeApp(firebaseConfig);
+    const storage = firebase.storage();
+
+    // Elemanları seç
+    const uploadForm = document.getElementById('uploadForm');
+    const nameInput = document.getElementById('nameInput');
+    const fileInput = document.getElementById('fileInput');
+    const preview = document.getElementById('preview');
+    const progressContainer = document.getElementById('progressContainer');
+    const uploadProgress = document.getElementById('uploadProgress');
+    const progressText = document.getElementById('progressText');
+    const submitButton = document.querySelector('.btn-submit');
+
+    // Dosya seçildiğinde önizleme ve butonu göster/gizle
+    fileInput.addEventListener('change', () => {
+      preview.innerHTML = '';
+      const files = Array.from(fileInput.files);
+      if (files.length > 0) {
+        submitButton.style.display = 'block';
+      } else {
+        submitButton.style.display = 'none';
+      }
+      files.forEach(file => {
+        const url = URL.createObjectURL(file);
+        const img = document.createElement('img');
+        img.src = url;
+        preview.appendChild(img);
+      });
+    });
+
+    // Form gönderildiğinde yükleme
+    uploadForm.addEventListener('submit', async e => {
+      e.preventDefault();
+      const name = nameInput.value.trim() || 'Anonim';
+      const files = Array.from(fileInput.files);
+      if (!files.length) return alert('Lütfen en az bir fotoğraf seçin.');
+      await uploadFiles(name, files);
+    });
+
+    // Görüntüleri sıkıştırıp yükleme
+    async function uploadFiles(name, files) {
+      progressContainer.style.display = 'block';
+      let totalBytes = files.reduce((sum, f) => sum + f.size, 0);
+      let transferred = 0;
+
+      for (const file of files) {
+        const compressedBlob = await compressImage(file, 1024, 0.7);
+        const metadata = { contentType: compressedBlob.type };
+        const storageRef = storage.ref(`uploads/${Date.now()}_${file.name}`);
+        const uploadTask = storageRef.put(compressedBlob, metadata);
+
+        await new Promise((resolve, reject) => {
+          uploadTask.on('state_changed', snapshot => {
+            transferred += snapshot.bytesTransferred;
+            const progressPercent = Math.min((transferred / totalBytes) * 100, 100);
+            uploadProgress.value = progressPercent;
+            progressText.textContent = Math.floor(progressPercent) + '%';
+          }, err => reject(err), resolve);
+        });
+      }
+
+      alert('Tüm fotoğraflar başarıyla yüklendi!');
+      uploadForm.reset();
+      preview.innerHTML = '';
+      submitButton.style.display = 'none';
+      progressContainer.style.display = 'none';
+      uploadProgress.value = 0;
+      progressText.textContent = '0%';
+    }
+
+    // Resmi sıkıştırma fonksiyonu
+    function compressImage(file, maxWidth, quality) {
+      return new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => {
+          const ratio = Math.min(maxWidth / img.width, 1);
+          const width = img.width * ratio;
+          const height = img.height * ratio;
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          canvas.toBlob(blob => resolve(blob), file.type, quality);
+        };
+        img.src = URL.createObjectURL(file);
+      });
+    }
+  </script>
+</body>
+</html>
