@@ -10,34 +10,36 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="container">
-    <div class="header-text">
-      <h1>Ezgi &amp; Yiğit</h1>
-      <p class="date">17-24 Mayıs 2025</p>
-      <p class="quote">“Bizden daha iyi fotoğrafçısınız!”</p>
-      <p class="subtitle">Düğünümüzde çektiğiniz tüm fotoğrafları paylaşın.</p>
-    </div>
-
-    <form id="uploadForm">
-      <label for="nameInput">İsminizi Girin (İsteğe Bağlı):</label>
-      <input type="text" id="nameInput" placeholder="Örn: Ahmet Yılmaz">
-
-      <label for="fileInput" class="btn-file">
-        <i class="fas fa-camera"></i> Fotoğraf Yükle
-      </label>
-      <input type="file" id="fileInput" accept="image/*" multiple required hidden>
-
-      <div id="preview"></div>
-
-      <!-- Başlangıçta gizli Yükle butonu -->
-      <button type="submit" class="btn-submit" style="display: none;">Yükle</button>
-    </form>
-
-    <div id="progressContainer">
-      <p>Yükleniyor... <span id="progressText">0%</span></p>
-      <progress id="uploadProgress" value="0" max="100"></progress>
-    </div>
+<div class="container">
+  <div class="header-text">
+    <h1>Ezgi &amp; Yiğit</h1>
+    <p class="date">17-24 Mayıs 2025</p>
+    <p class="quote">“Bizden daha iyi fotoğrafçısınız!”</p>
+    <p class="subtitle">Düğünümüzde çektiğiniz tüm fotoğrafları ve videoları paylaşın.</p>
   </div>
+
+  <form id="uploadForm">
+    <label for="nameInput">İsminizi Girin (İsteğe Bağlı):</label>
+    <input type="text" id="nameInput" placeholder="Örn: Ahmet Yılmaz">
+
+    <label for="fileInput" class="btn-file">
+      <i class="fas fa-camera"></i> Fotoğraf&Video Yükle
+    </label>
+    <input type="file" id="fileInput" accept="image/*,video/*" multiple required hidden>
+
+    <div id="preview"></div>
+
+    <button type="submit" class="btn-submit" style="display: none;">Yükle</button>
+  </form>
+
+  <button class="btn-gallery" onclick="window.location.href='galeri.html'">🏞️ Galeriye Git</button>
+
+  <div id="progressContainer">
+    <p>Yükleniyor... <span id="progressText">0%</span></p>
+    <progress id="uploadProgress" value="0" max="100"></progress>
+  </div>
+</div>
+
 
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
@@ -69,21 +71,36 @@
     const submitButton = document.querySelector('.btn-submit');
 
     // Dosya seçildiğinde önizleme ve butonu göster/gizle
-    fileInput.addEventListener('change', () => {
-      preview.innerHTML = '';
-      const files = Array.from(fileInput.files);
-      if (files.length > 0) {
-        submitButton.style.display = 'block';
-      } else {
-        submitButton.style.display = 'none';
-      }
-      files.forEach(file => {
-        const url = URL.createObjectURL(file);
-        const img = document.createElement('img');
-        img.src = url;
-        preview.appendChild(img);
-      });
-    });
+  fileInput.addEventListener('change', () => {
+  preview.innerHTML = '';
+  const files = Array.from(fileInput.files);
+  if (files.length > 0) {
+    submitButton.style.display = 'block';
+  } else {
+    submitButton.style.display = 'none';
+  }
+
+  files.forEach(file => {
+    const url = URL.createObjectURL(file);
+    if (file.type.startsWith('image/')) {
+      const img = document.createElement('img');
+      img.src = url;
+      img.style.maxWidth = '100%';
+      img.style.marginTop = '10px';
+      preview.appendChild(img);
+    } else if (file.type.startsWith('video/')) {
+      const video = document.createElement('video');
+      video.src = url;
+      video.controls = true;
+      video.style.maxWidth = '100%';
+      video.style.marginTop = '10px';
+      preview.appendChild(video);
+    }
+  });
+});
+
+
+
 
     // Form gönderildiğinde yükleme
     uploadForm.addEventListener('submit', async e => {
@@ -95,35 +112,7 @@
     });
 
     // Görüntüleri sıkıştırıp yükleme
-    async function uploadFiles(name, files) {
-      progressContainer.style.display = 'block';
-      let totalBytes = files.reduce((sum, f) => sum + f.size, 0);
-      let transferred = 0;
-
-      for (const file of files) {
-        const compressedBlob = await compressImage(file, 1024, 0.7);
-        const metadata = { contentType: compressedBlob.type };
-        const storageRef = storage.ref(`uploads/${Date.now()}_${file.name}`);
-        const uploadTask = storageRef.put(compressedBlob, metadata);
-
-        await new Promise((resolve, reject) => {
-          uploadTask.on('state_changed', snapshot => {
-            transferred += snapshot.bytesTransferred;
-            const progressPercent = Math.min((transferred / totalBytes) * 100, 100);
-            uploadProgress.value = progressPercent;
-            progressText.textContent = Math.floor(progressPercent) + '%';
-          }, err => reject(err), resolve);
-        });
-      }
-
-      alert('Tüm fotoğraflar başarıyla yüklendi!');
-      uploadForm.reset();
-      preview.innerHTML = '';
-      submitButton.style.display = 'none';
-      progressContainer.style.display = 'none';
-      uploadProgress.value = 0;
-      progressText.textContent = '0%';
-    }
+   uploadFiles
 
     // Resmi sıkıştırma fonksiyonu
     function compressImage(file, maxWidth, quality) {
@@ -143,6 +132,44 @@
         img.src = URL.createObjectURL(file);
       });
     }
+    async function uploadFiles(name, files) {
+  progressContainer.style.display = 'block';
+  let totalBytes = files.reduce((sum, f) => sum + f.size, 0);
+  let transferred = 0;
+
+  for (const file of files) {
+    let uploadBlob = file;
+    let metadata = { contentType: file.type };
+    let fileName = `${Date.now()}_${file.name}`;
+
+    // Eğer görselse sıkıştır
+    if (file.type.startsWith('image/')) {
+      uploadBlob = await compressImage(file, 1024, 0.7);
+      metadata.contentType = uploadBlob.type;
+    }
+
+    const storageRef = storage.ref(`uploads/${fileName}`);
+    const uploadTask = storageRef.put(uploadBlob, metadata);
+
+    await new Promise((resolve, reject) => {
+      uploadTask.on('state_changed', snapshot => {
+        transferred += snapshot.bytesTransferred;
+        const progressPercent = Math.min((transferred / totalBytes) * 100, 100);
+        uploadProgress.value = progressPercent;
+        progressText.textContent = Math.floor(progressPercent) + '%';
+      }, err => reject(err), resolve);
+    });
+  }
+
+  alert('Tüm dosyalar başarıyla yüklendi!');
+  uploadForm.reset();
+  preview.innerHTML = '';
+  submitButton.style.display = 'none';
+  progressContainer.style.display = 'none';
+  uploadProgress.value = 0;
+  progressText.textContent = '0%';
+}
+
   </script>
 </body>
 </html>

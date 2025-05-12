@@ -61,6 +61,22 @@ input[type="text"] {
   font-size: 0.95em;
 }
 
+ .btn-gallery {
+    margin-top: 15px;
+    background-color: rgba(255, 255, 255, 0.441); /* kahverengiye yakın yarı saydam */
+    color: #000000;
+    border: none;
+    padding: 12px 40px;
+    border-radius: 10px;
+    font-size: 1em;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+
+  .btn-gallery:hover {
+    background-color: rgb(255, 255, 255);
+  }
+
 /* Fotoğraf Butonu */
 .btn-file {
   display: inline-block; width: 100%; margin-top: 10px;
